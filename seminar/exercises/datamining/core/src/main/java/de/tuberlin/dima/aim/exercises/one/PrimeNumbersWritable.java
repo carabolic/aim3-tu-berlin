@@ -21,10 +21,8 @@ import org.apache.hadoop.io.Writable;
 
 import java.io.DataInput;
 import java.io.DataOutput;
-import java.io.EOFException;
 import java.io.IOException;
 import java.util.Arrays;
-import java.util.Vector;
 
 public class PrimeNumbersWritable implements Writable {
 
@@ -40,37 +38,23 @@ public class PrimeNumbersWritable implements Writable {
 
   @Override
   public void write(DataOutput out) throws IOException {
-	  for (int number : numbers) {
-		  out.writeInt(number);
+	  // write the length of the PrimeNumbersArray
+	  out.writeInt(numbers.length);
+	  
+	  for (int i = 0; i < numbers.length; i++) {
+		  out.writeInt(numbers[i]);
 	  }
   }
 
   @Override
   public void readFields(DataInput in) throws IOException {
-	  System.out.println(in.toString());
-	  Vector<Integer> buffer = new Vector<Integer>();
+	  // read the length of the PrimeNumbersArray
+	  int length = in.readInt();
+	  numbers = new int[length];
 	  
-	  int input;
-	  try {
-		  while ((input = in.readInt()) > 0) {
-			  buffer.add(new Integer(input));
-			  System.out.println("Added " + input + " size is " + buffer.size());
-		  }
-	  }
-	  catch(EOFException e) {
-		  int[] numbers = new int[buffer.size()];
-		  System.out.println("Numbers length: " + numbers.length);
-		  for (int n = 0; n < buffer.size(); n++) {
-			  numbers[n] = buffer.elementAt(n).intValue();
-		  }
-	  }
-	  
-	  System.out.println("Numbers:");
-	  System.out.println("Lenght: " + numbers.length);
-	  for (int number : numbers) {
-		  System.out.println(number);
-	  }
-	  
+	  for (int i = 0; i < length; i++) {
+		  numbers[i] = in.readInt();
+	  }	  
   }
 
   @Override
