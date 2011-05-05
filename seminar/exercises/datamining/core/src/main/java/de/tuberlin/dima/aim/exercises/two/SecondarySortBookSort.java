@@ -93,6 +93,7 @@ public class SecondarySortBookSort extends HadoopJob {
 		super(BookSortKey.class, true);
 	}
 	
+	@SuppressWarnings("rawtypes")
 	@Override
 	public int compare(WritableComparable key1, WritableComparable key2) {
 		BookSortKey bSk1 = (BookSortKey) key1;
