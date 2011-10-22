@@ -49,28 +49,74 @@ public class BookAndAuthorJoinPact implements PlanAssembler, PlanAssemblerDescri
     @Override
     public void match(PactLong authorID, PactString authorName, BookAndYear bookAndYear,
         Collector<PactString, BookAndYear> collector) {
-      // IMPLEMENT ME
+    	System.out.println(authorName.getValue() + "\t" + bookAndYear.toString());
+    	collector.collect(authorName, bookAndYear);
     }
   }
 
   public static class BookAndYear implements Value {
 
+	private String title;
+	private short year;
+	  
     public BookAndYear() {}
 
     public BookAndYear(String title, short year) {
-      // IMPLEMENT
+      this.title = title;
+      this.year = year;
     }
 
     @Override
     public void write(DataOutput out) throws IOException {
-      // IMPLEMENT
+    	out.writeInt(title.length());
+        out.writeChars(title);
+    	out.writeShort(year);
     }
 
     @Override
-    public void read(DataInput out) throws IOException {
-      // IMPLEMENT
-    }
+    public void read(DataInput in) throws IOException {
+    	int len = in.readInt();
+    	
+    	StringBuilder strBld = new StringBuilder();
+    	for (int i = 0; i < len; i++) {
+    		strBld.append(in.readChar());
+    	}
+    	
+    	title = strBld.toString();
+    	year = in.readShort();
+    } 
 
-    // equals/hashCode
+	@Override
+	public int hashCode() {
+		final int prime = 31;
+		int result = 1;
+		result = prime * result + ((title == null) ? 0 : title.hashCode());
+		result = prime * result + year;
+		return result;
+	}
+
+	@Override
+	public boolean equals(Object obj) {
+		if (this == obj)
+			return true;
+		if (obj == null)
+			return false;
+		if (getClass() != obj.getClass())
+			return false;
+		BookAndYear other = (BookAndYear) obj;
+		if (title == null) {
+			if (other.title != null)
+				return false;
+		} else if (!title.equals(other.title))
+			return false;
+		if (year != other.year)
+			return false;
+		return true;
+	}
+
+	@Override
+	public String toString() {
+		return "BookAndYear [title=" + title + ", year=" + year + "]";
+	}
   }
 }

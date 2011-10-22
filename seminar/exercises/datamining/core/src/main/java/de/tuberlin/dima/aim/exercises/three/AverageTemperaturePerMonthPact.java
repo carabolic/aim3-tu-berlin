@@ -34,6 +34,8 @@ import java.io.DataOutput;
 import java.io.IOException;
 import java.util.Iterator;
 
+import com.google.common.collect.ComparisonChain;
+
 public class AverageTemperaturePerMonthPact implements PlanAssembler, PlanAssemblerDescription {
 
   public static final double MINIMUM_QUALITY = 0.25;
@@ -52,7 +54,16 @@ public class AverageTemperaturePerMonthPact implements PlanAssembler, PlanAssemb
 
     @Override
     public void map(PactNull pactNull, PactString line, Collector<YearMonthKey, PactInteger> collector) {
-      //IMPLEMENT ME
+      	String[] fields = line.toString().split("\t");
+      	
+      	short year = Short.parseShort(fields[0]);
+      	short month = Short.parseShort(fields[1]);
+      	int temperature = Integer.parseInt(fields[2]);
+      	double quality = Double.parseDouble(fields[3]);
+      	
+      	if (quality >= MINIMUM_QUALITY) {
+      		collector.collect(new YearMonthKey(year, month), new PactInteger(temperature));
+      	}
     }
   }
 
@@ -62,34 +73,83 @@ public class AverageTemperaturePerMonthPact implements PlanAssembler, PlanAssemb
     @Override
     public void reduce(YearMonthKey yearMonthKey, Iterator<PactInteger> temperatures,
         Collector<YearMonthKey, PactDouble> collector) {
-      // IMPLEMENT
+    	int sum = 0;
+    	int count = 0;
+    	double avgTemp = 0;
+    	
+    	while (temperatures.hasNext()) {
+    		sum += temperatures.next().getValue();
+    		count++;
+    	}
+    	
+    	avgTemp = (double) sum / (double) count;
+    	collector.collect(yearMonthKey, new PactDouble(avgTemp));
     }
   }
 
   public static class YearMonthKey implements Key {
 
-    public YearMonthKey() {}
+    private short year;
+    private short month;
+	  
+	public YearMonthKey() {}
 
     public YearMonthKey(short year, short month) {
-      //IMPLEMENT
+    	this.year = year;
+    	this.month = month;
     }
 
     @Override
     public int compareTo(Key other) {
-      // IMPLEMENT
-      return 0;
+    	if (other != null && other instanceof YearMonthKey) {
+    		YearMonthKey o = (YearMonthKey) other;
+    		return ComparisonChain.start().compare(year, o.year).compare(month, o.month).result();
+    	}
+    	else {
+    		return -1;
+    	}    	
     }
 
     @Override
     public void write(DataOutput out) throws IOException {
-      //IMPLEMENT
+      out.writeShort(year);
+      out.writeShort(month);
     }
 
     @Override
     public void read(DataInput in) throws IOException {
-      //IMPLEMENT
+      year = in.readShort();
+      month = in.readShort();
     }
 
-    //IMPLEMENT equals() and hashCode()
+	@Override
+	public int hashCode() {
+		final int prime = 31;
+		int result = 1;
+		result = prime * result + month;
+		result = prime * result + year;
+		return result;
+	}
+
+	@Override
+	public boolean equals(Object obj) {
+		if (this == obj)
+			return true;
+		if (obj == null)
+			return false;
+		if (getClass() != obj.getClass())
+			return false;
+		YearMonthKey other = (YearMonthKey) obj;
+		if (month != other.month)
+			return false;
+		if (year != other.year)
+			return false;
+		return true;
+	}
+
+	@Override
+	public String toString() {
+		return "YearMonthKey [year=" + year + ", month=" + month + "]";
+	}
   }
 }
