@@ -27,7 +27,7 @@ import java.util.Arrays;
 public class PrimeNumbersWritable implements Writable {
 
   private int[] numbers;
-
+  
   public PrimeNumbersWritable() {
     numbers = new int[0];
   }
@@ -38,12 +38,23 @@ public class PrimeNumbersWritable implements Writable {
 
   @Override
   public void write(DataOutput out) throws IOException {
-    //IMPLEMENT ME
+	  // write the length of the PrimeNumbersArray
+	  out.writeInt(numbers.length);
+	  
+	  for (int i = 0; i < numbers.length; i++) {
+		  out.writeInt(numbers[i]);
+	  }
   }
 
   @Override
   public void readFields(DataInput in) throws IOException {
-    //IMPLEMENT ME
+	  // read the length of the PrimeNumbersArray
+	  int length = in.readInt();
+	  numbers = new int[length];
+	  
+	  for (int i = 0; i < length; i++) {
+		  numbers[i] = in.readInt();
+	  }	  
   }
 
   @Override

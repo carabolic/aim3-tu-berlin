@@ -23,8 +23,13 @@ import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.NullWritable;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.io.WritableComparable;
+import org.apache.hadoop.io.WritableComparator;
+import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.mapreduce.Mapper;
+import org.apache.hadoop.mapreduce.Partitioner;
 import org.apache.hadoop.mapreduce.Reducer;
+import org.apache.hadoop.mapreduce.lib.input.TextInputFormat;
+import org.apache.hadoop.mapreduce.lib.output.TextOutputFormat;
 
 import java.io.DataInput;
 import java.io.DataOutput;
@@ -41,8 +46,13 @@ public class SecondarySortBookSort extends HadoopJob {
     Path inputPath = new Path(parsedArgs.get("--input"));
     Path outputPath = new Path(parsedArgs.get("--output"));
 
-    //IMPLEMENT ME
+    Job secondarySort = prepareJob(inputPath, outputPath, TextInputFormat.class, ByCenturyAndTitleMapper.class,
+    		BookSortKey.class, Text.class, SecondarySortBookSortReducer.class, Text.class, NullWritable.class, TextOutputFormat.class);
 
+    secondarySort.setPartitionerClass(SecondarySortPartioner.class);
+    secondarySort.setGroupingComparatorClass(SecondarySortGroupComperator.class);
+    
+    secondarySort.waitForCompletion(true);
     return 0;
   }
 
@@ -50,8 +60,48 @@ public class SecondarySortBookSort extends HadoopJob {
 
     @Override
     protected void map(Object key, Text line, Context ctx) throws IOException, InterruptedException {
-      // IMPLEMENT ME
+    	String[] fields = line.toString().split("\t");
+    	int century = Integer.parseInt(fields[1].substring(0, 2));
+    	BookSortKey outKey = new BookSortKey(century, fields[2]);
+    	ctx.write(outKey, new Text(fields[2]));
     }
+  }
+  
+  /**
+   * Custom Partitioner that partitions the data only by part of the key, which is the <code>century</code>
+   * @author Christoph Bruecke
+   *
+   */
+  static class SecondarySortPartioner extends Partitioner<BookSortKey, Text> {
+
+	@Override
+	public int getPartition(BookSortKey key, Text value, int partNum) {
+		return (new Integer(key.century)).hashCode() % partNum;
+	}
+	  
+  }
+  
+  /**
+   * Custom GroupingComparator that groups the the data only on part of the keys, which is the
+   * <code>century</code>
+   * @author Christoph Bruecke
+   *
+   */
+  static class SecondarySortGroupComperator extends WritableComparator {
+
+	protected SecondarySortGroupComperator() {
+		super(BookSortKey.class, true);
+	}
+	
+	@SuppressWarnings("rawtypes")
+	@Override
+	public int compare(WritableComparable key1, WritableComparable key2) {
+		BookSortKey bSk1 = (BookSortKey) key1;
+		BookSortKey bSk2 = (BookSortKey) key2;
+		
+		return (new Integer(bSk1.century)).compareTo(new Integer(bSk2.century));
+	}
+	  
   }
 
   static class SecondarySortBookSortReducer extends Reducer<BookSortKey,Text,Text,NullWritable> {
@@ -66,35 +116,91 @@ public class SecondarySortBookSort extends HadoopJob {
   }
 
   static class BookSortKey implements WritableComparable<BookSortKey> {
-
-    BookSortKey() {}
+	  
+	  private int century;
+	  private String title;
+	  
+	  public int getCentury() {
+		  return century; 
+	  }
+	  
+	  public String getTitle() {
+		  return title;
+	  }
+	  
+    public BookSortKey() {
+    	this.century = 0;
+    	this.title = "";
+    }
+    
+    public BookSortKey(int century, String title) {
+    	this.century = century;
+    	this.title = title;
+    }
 
     @Override
     public int compareTo(BookSortKey other) {
-      // IMPLEMENT ME
-      return 0;
+      if (other != null) {
+    	  if (century == other.century) {
+    		  return title.compareTo(other.title);
+    	  }
+    	  else {
+    		  return (new Integer(century)).compareTo(new Integer (other.century));
+    	  }
+      }
+      else {
+    	  return 1;
+      }
     }
 
     @Override
     public void write(DataOutput out) throws IOException {
-      // IMPLEMENT ME
+    	out.writeInt(century);
+    	out.writeInt(title.length());
+    	out.writeChars(title);
     }
 
     @Override
     public void readFields(DataInput in) throws IOException {
-      // IMPLEMENT ME
+    	century = in.readInt();
+    	int strLen = in.readInt();
+    	
+    	StringBuilder strBld = new StringBuilder(strLen);
+    	for (int i = 0; i < strLen; i++) {
+    		strBld.append(in.readChar());
+    	}
+    	
+    	title = strBld.toString();
     }
 
     @Override
     public boolean equals(Object o) {
-      // IMPLEMENT ME
-      return true;
+    	if (this == o) {
+    		return true;
+    	}
+    	
+    	if (o instanceof BookSortKey) {
+    		BookSortKey that = (BookSortKey) o;
+    		if (that.title.equals(title) && that.century == century) {
+    			return true;
+    		}
+    		else {
+    			return false;
+    		}
+    	}
+    	else {
+    		return false;
+    	}
     }
 
     @Override
     public int hashCode() {
-      // IMPLEMENT ME
-      return 0;
+    	return toString().hashCode();
+    }    
+    
+    @Override
+    public String toString() {
+    	return century + "\t" + title;
     }
   }
 

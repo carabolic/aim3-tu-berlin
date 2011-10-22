@@ -26,11 +26,12 @@ import org.apache.hadoop.mapreduce.Mapper;
 import org.apache.hadoop.mapreduce.Reducer;
 import org.apache.hadoop.mapreduce.lib.input.TextInputFormat;
 import org.apache.hadoop.mapreduce.lib.output.TextOutputFormat;
-
 import java.io.IOException;
 import java.util.Map;
+import java.util.StringTokenizer;
 
 public class FilteringWordCount extends HadoopJob {
+	
   @Override
   public int run(String[] args) throws Exception {
     Map<String,String> parsedArgs = parseArgs(args);
@@ -46,9 +47,36 @@ public class FilteringWordCount extends HadoopJob {
   }
 
   static class FilteringWordCountMapper extends Mapper<Object,Text,Text,IntWritable> {
+		private final String[] stopWords = {"to", "and", "in", "the"};
+	  
     @Override
     protected void map(Object key, Text line, Context ctx) throws IOException, InterruptedException {
-      // IMPLEMENT ME
+    	StringTokenizer strTok = new StringTokenizer(line.toString().replace(",", " "));
+    	
+    	// Use Lucene StandardAnalyzer
+    	/* StandardAnalyzer stdAnal = new StandardAnalyzer(Version.LUCENE_30);
+    	TokenStream stream = stdAnal.tokenStream("word", new StringReader(line.toString()));
+    	stream.reset();
+    	while //do do something to get all tokens
+    		// confusing TokenStream API
+    	*/
+    	
+    	while (strTok.hasMoreTokens()) {
+    		String word = strTok.nextToken().toLowerCase();
+    		
+    		if (!isStopWord(word)) {
+    			ctx.write(new Text(word), new IntWritable(1));
+    		}
+    	}
+    }
+    
+    private boolean isStopWord(String word) {
+    	for (String stopWord : stopWords) {
+    		if (word.equals(stopWord)) {
+    			return true;
+    		}
+    	}
+    	return false;
     }
   }
 
@@ -56,7 +84,11 @@ public class FilteringWordCount extends HadoopJob {
     @Override
     protected void reduce(Text key, Iterable<IntWritable> values, Context ctx)
         throws IOException, InterruptedException {
-      // IMPLEMENT ME
+    	int sum = 0;
+    	for (IntWritable val : values) {
+    		sum += val.get();
+    	}
+    	ctx.write(key, new IntWritable(sum));
     }
   }
 
